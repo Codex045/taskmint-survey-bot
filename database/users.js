@@ -1,17 +1,18 @@
 import { db } from "../firebase.js";
-
-import {
-    FieldValue,
-    Timestamp
-} from "firebase-admin/firestore";
+import config from "../config.js";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 export async function registerUser(user, referredBy = "") {
 
     const ref = db.collection("users").doc(String(user.id));
 
-    const doc = await ref.get();
+    const snap = await ref.get();
 
-    if (doc.exists) return;
+    if (snap.exists) return;
+
+    if (referredBy === String(user.id)) {
+        referredBy = "";
+    }
 
     await ref.set({
 
@@ -25,13 +26,13 @@ export async function registerUser(user, referredBy = "") {
 
         totalEarned: 0,
 
-        completedSurveys: 0,
-
         totalWithdrawn: 0,
+
+        completedSurveys: 0,
 
         referralCount: 0,
 
-        referredBy,
+        referredBy: referredBy || "",
 
         referralPaid: false,
 
@@ -61,13 +62,17 @@ export async function updateLogin(userId) {
 
 export async function getUser(userId) {
 
-    const doc = await db.collection("users")
+    const snap = await db.collection("users")
         .doc(String(userId))
         .get();
 
-    if (!doc.exists) return null;
+    if (!snap.exists) {
 
-    return doc.data();
+        return null;
+
+    }
+
+    return snap.data();
 
 }
 
@@ -94,5 +99,56 @@ export async function removeBalance(userId, amount) {
             balance: FieldValue.increment(-Number(amount))
 
         });
+
+}
+
+export async function rewardReferral(userId) {
+
+    const userRef = db.collection("users").doc(String(userId));
+
+    const snap = await userRef.get();
+
+    if (!snap.exists) return;
+
+    const user = snap.data();
+
+    if (user.referralPaid) return;
+
+    if (!user.referredBy) return;
+
+    if ((user.completedSurveys || 0) < 1) return;
+
+    const referrerRef = db.collection("users")
+        .doc(String(user.referredBy));
+
+    await referrerRef.update({
+
+        balance: FieldValue.increment(config.REFERRAL_REWARD),
+
+        totalEarned: FieldValue.increment(config.REFERRAL_REWARD),
+
+        referralCount: FieldValue.increment(1)
+
+    });
+
+    await userRef.update({
+
+        referralPaid: true
+
+    });
+
+    await db.collection("transactions").add({
+
+        userId: String(user.referredBy),
+
+        type: "Referral Bonus",
+
+        amount: config.REFERRAL_REWARD,
+
+        fromUser: String(user.id),
+
+        createdAt: Timestamp.now()
+
+    });
 
 }

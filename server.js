@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "crypto";
 import { db } from "./firebase.js";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import config from "./config.js";
 import { rewardReferral } from "./database/users.js";
 
@@ -42,15 +42,19 @@ app.get("/cpx/postback", async (req, res) => {
             return res.status(403).send("Invalid Hash");
         }
 
-        const trx = db.collection("transactions").doc(trans_id);
+        const transactionRef = db
+            .collection("transactions")
+            .doc(String(trans_id));
 
-        const trxSnap = await trx.get();
+        const exists = await transactionRef.get();
 
-        if (trxSnap.exists && status !== "2") {
+        if (exists.exists && status !== "2") {
             return res.send("OK");
         }
 
-        const userRef = db.collection("users").doc(String(ext_user_id));
+        const userRef = db
+            .collection("users")
+            .doc(String(ext_user_id));
 
         if (status === "2") {
 
@@ -62,11 +66,11 @@ app.get("/cpx/postback", async (req, res) => {
 
             });
 
-            await trx.set({
+            await transactionRef.set({
 
                 status: "reversed",
 
-                reversedAt: new Date()
+                reversedAt: Timestamp.now()
 
             }, { merge: true });
 
@@ -84,7 +88,7 @@ app.get("/cpx/postback", async (req, res) => {
 
         });
 
-        await trx.set({
+        await transactionRef.set({
 
             userId: String(ext_user_id),
 
@@ -92,21 +96,25 @@ app.get("/cpx/postback", async (req, res) => {
 
             amount: Number(amount_local),
 
-            usd: Number(amount_usd || 0),
+            amountUSD: Number(amount_usd || 0),
 
             status: "completed",
 
-            createdAt: new Date()
+            createdAt: Timestamp.now()
 
         });
 
         await rewardReferral(ext_user_id);
 
+        console.log(
+            `Survey Reward → User ${ext_user_id}: ₦${amount_local}`
+        );
+
         res.send("OK");
 
     } catch (err) {
 
-        console.log(err);
+        console.error(err);
 
         res.status(500).send("ERROR");
 
