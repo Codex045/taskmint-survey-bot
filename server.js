@@ -14,13 +14,6 @@ app.get("/", (req, res) => {
     res.send("TaskMint Survey Bot API Running");
 });
 
-/*
-CPX Research Postback
-
-Example:
-https://yourdomain.com/cpx/postback
-*/
-
 app.get("/cpx/postback", async (req, res) => {
 
     try {
@@ -32,12 +25,9 @@ app.get("/cpx/postback", async (req, res) => {
             hash
         } = req.query;
 
-        // Verify request
         const verify = crypto
             .createHash("md5")
-            .update(
-                `${trans_id}-${config.CPX_SECURITY_HASH}`
-            )
+            .update(`${trans_id}-${config.CPX_SECURITY_HASH}`)
             .digest("hex");
 
         if (verify !== hash) {
@@ -53,15 +43,13 @@ app.get("/cpx/postback", async (req, res) => {
             }
         );
 
-        console.log(
-            `Rewarded User ${ext_user_id} : ₦${amount_local}`
-        );
+        console.log(`Rewarded User ${ext_user_id} : ₦${amount_local}`);
 
         res.send("OK");
 
     } catch (err) {
 
-        console.log(err);
+        console.error(err);
 
         res.status(500).send("ERROR");
 
@@ -69,9 +57,8 @@ app.get("/cpx/postback", async (req, res) => {
 
 });
 
-app.listen(
-	const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`CPX Postback Server Running on port ${PORT}`);
 });
