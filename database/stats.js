@@ -1,22 +1,34 @@
-import {
-collection,
-getDocs
-} from "firebase/firestore";
+import { db } from "../firebase.js";
+import { FieldValue } from "firebase-admin/firestore";
 
-import {db} from "../firebase.js";
+export async function newUser() {
 
-export async function totalUsers(){
+    await db.collection("stats").doc("global").set({
 
-const snap=await getDocs(collection(db,"users"));
+        users: FieldValue.increment(1)
 
-return snap.size;
+    }, { merge: true });
 
 }
 
-export async function totalWithdrawals(){
+export async function surveyCompleted(amount) {
 
-const snap=await getDocs(collection(db,"withdrawals"));
+    await db.collection("stats").doc("global").set({
 
-return snap.size;
+        surveys: FieldValue.increment(1),
+
+        earnings: FieldValue.increment(Number(amount))
+
+    }, { merge: true });
+
+}
+
+export async function referralBonus() {
+
+    await db.collection("stats").doc("global").set({
+
+        referrals: FieldValue.increment(1)
+
+    }, { merge: true });
 
 }

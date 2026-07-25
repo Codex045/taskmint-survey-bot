@@ -1,23 +1,27 @@
-import { getBalance } from "../database/wallet.js";
+import { getUser } from "../database/users.js";
 
-export default function (bot) {
+export default function wallet(bot) {
 
-bot.hears("💰 Wallet", async (ctx) => {
+    bot.hears("💰 Wallet", async (ctx) => {
 
-const balance = await getBalance(ctx.from.id);
+        const user = await getUser(ctx.from.id);
 
-ctx.reply(
+        if (!user) return;
 
-`💰 Your Wallet
+        await ctx.reply(
 
-💵 Balance : ₦${Number(balance).toLocaleString()}
+`💰 Wallet
 
-📋 Complete CPX Research surveys to increase your earnings.
+Balance: ₦${user.balance}
 
-💸 Minimum Withdrawal : ₦2,500`
+Total Earned: ₦${user.totalEarned}
 
-);
+Withdrawn: ₦${user.totalWithdrawn}
 
-});
+Completed Surveys: ${user.completedSurveys}`
+
+        );
+
+    });
 
 }

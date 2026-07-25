@@ -1,131 +1,98 @@
-import {
-    doc,
-    setDoc,
-    getDoc,
-    updateDoc,
-    increment
-} from "firebase/firestore";
-
 import { db } from "../firebase.js";
 
-// Register a new user
+import {
+    FieldValue,
+    Timestamp
+} from "firebase-admin/firestore";
+
 export async function registerUser(user, referredBy = "") {
 
-    const ref = doc(db, "users", String(user.id));
+    const ref = db.collection("users").doc(String(user.id));
 
-    const snap = await getDoc(ref);
+    const doc = await ref.get();
 
-    if (snap.exists()) return false;
+    if (doc.exists) return;
 
-    await setDoc(ref, {
+    await ref.set({
 
-        id: user.id,
-
-        name: user.first_name || "",
+        id: String(user.id),
 
         username: user.username || "",
 
+        firstName: user.first_name || "",
+
         balance: 0,
-
-        referrals: 0,
-
-        referredBy: referredBy,
 
         totalEarned: 0,
 
         completedSurveys: 0,
 
-        pendingWithdraw: 0,
+        totalWithdrawn: 0,
 
-        status: "active",
+        referralCount: 0,
 
-        joined: Date.now(),
+        referredBy,
 
-        lastLogin: Date.now()
+        referralPaid: false,
 
-    });
+        dailyBonusDay: 0,
 
-    return true;
+        lastDailyBonus: 0,
 
-}
+        createdAt: Timestamp.now(),
 
-// Get user
-export async function getUser(id) {
-
-    const ref = doc(db, "users", String(id));
-
-    const snap = await getDoc(ref);
-
-    if (!snap.exists()) return null;
-
-    return snap.data();
-
-}
-
-// Update last login
-export async function updateLogin(id) {
-
-    await updateDoc(doc(db, "users", String(id)), {
-
-        lastLogin: Date.now()
+        lastLogin: Timestamp.now()
 
     });
 
 }
 
-// Add balance
-export async function addBalance(id, amount) {
+export async function updateLogin(userId) {
 
-    await updateDoc(doc(db, "users", String(id)), {
+    await db.collection("users")
+        .doc(String(userId))
+        .update({
 
-        balance: increment(amount),
+            lastLogin: Timestamp.now()
 
-        totalEarned: increment(amount)
-
-    });
-
-}
-
-// Remove balance
-export async function removeBalance(id, amount) {
-
-    await updateDoc(doc(db, "users", String(id)), {
-
-        balance: increment(-amount)
-
-    });
+        });
 
 }
 
-// Add referral
-export async function addReferral(id) {
+export async function getUser(userId) {
 
-    await updateDoc(doc(db, "users", String(id)), {
+    const doc = await db.collection("users")
+        .doc(String(userId))
+        .get();
 
-        referrals: increment(1)
+    if (!doc.exists) return null;
 
-    });
-
-}
-
-// Add completed survey
-export async function addSurvey(id) {
-
-    await updateDoc(doc(db, "users", String(id)), {
-
-        completedSurveys: increment(1)
-
-    });
+    return doc.data();
 
 }
 
-// Update username
-export async function updateUsername(id, username) {
+export async function addBalance(userId, amount) {
 
-    await updateDoc(doc(db, "users", String(id)), {
+    await db.collection("users")
+        .doc(String(userId))
+        .update({
 
-        username: username
+            balance: FieldValue.increment(Number(amount)),
 
-    });
+            totalEarned: FieldValue.increment(Number(amount))
+
+        });
+
+}
+
+export async function removeBalance(userId, amount) {
+
+    await db.collection("users")
+        .doc(String(userId))
+        .update({
+
+            balance: FieldValue.increment(-Number(amount))
+
+        });
 
 }

@@ -1,24 +1,21 @@
-export default function (bot) {
+export default function support(bot) {
 
-bot.hears("📞 Support", async (ctx) => {
+    bot.hears("📞 Support", async (ctx) => {
 
-ctx.reply(
+        await ctx.reply(
 
-`📞 Support Center
+`📞 TaskMint Support
 
 Need help?
 
-📧 Email:
-support@taskmint.com
+• Survey issues
+• Withdrawals
+• Account problems
 
-💬 Telegram:
-@TaskMintSupport
+Contact:
+@Glad_Robert
+        );
 
-Response Time:
-Within 24 Hours`
-
-);
-
-});
+    });
 
 }

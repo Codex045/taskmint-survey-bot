@@ -1,40 +1,91 @@
-import {getBalance} from "../database/wallet.js";
-import {createWithdrawal} from "../database/withdrawals.js";
+import { db } from "../firebase.js";
+import { getUser, removeBalance } from "../database/users.js";
+import config from "../config.js";
 
-export default function(bot){
+const waiting = {};
 
-bot.hears("💸 Withdraw",async(ctx)=>{
+export default function withdraw(bot) {
 
-const balance=await getBalance(ctx.from.id);
+    bot.hears("💸 Withdraw", async (ctx) => {
 
-if(balance<2500){
+        const user = await getUser(ctx.from.id);
 
-return ctx.reply(
+        if (!user) return;
 
-"❌ Minimum withdrawal is ₦2,500."
+        if (user.balance < config.MIN_WITHDRAW) {
 
-);
+            return ctx.reply(
+`❌ Minimum withdrawal is ₦${config.MIN_WITHDRAW}.
 
-}
+Current Balance: ₦${user.balance}`
+            );
 
-await createWithdrawal({
+        }
 
-userId:ctx.from.id,
+        waiting[ctx.from.id] = true;
 
-amount:balance
+        await ctx.reply(
+"Send your bank details in this format:\n\nBank Name\nAccount Number\nAccount Name"
+        );
 
-});
+    });
 
-ctx.reply(
+    bot.on("text", async (ctx, next) => {
 
-`✅ Withdrawal Request Sent
+        if (!waiting[ctx.from.id]) return next();
 
-Amount: ₦${balance}
+        waiting[ctx.from.id] = false;
 
-Status: Pending`
+        const lines = ctx.message.text.split("\n");
 
-);
+        if (lines.length < 3) {
 
-});
+            return ctx.reply("Invalid format.");
+
+        }
+
+        const user = await getUser(ctx.from.id);
+
+        await removeBalance(ctx.from.id, user.balance);
+
+        await db.collection("withdrawals").add({
+
+            userId: String(ctx.from.id),
+
+            username: user.username || "",
+
+            amount: user.balance,
+
+            bankName: lines[0],
+
+            accountNumber: lines[1],
+
+            accountName: lines[2],
+
+            status: "pending",
+
+            createdAt: new Date()
+
+        });
+
+        await db.collection("transactions").add({
+
+            userId: String(ctx.from.id),
+
+            type: "Withdrawal",
+
+            amount: user.balance,
+
+            createdAt: new Date()
+
+        });
+
+        await ctx.reply(
+`✅ Withdrawal request of ₦${user.balance} submitted successfully.
+
+Waiting for admin approval.`
+        );
+
+    });
 
 }

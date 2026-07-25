@@ -1,17 +1,63 @@
+import { db } from "../firebase.js";
 import config from "../config.js";
 
-export default function(bot){
+let waiting = false;
 
-bot.command("broadcast",async(ctx)=>{
+export default function broadcast(bot) {
 
-if(String(ctx.from.id)!==String(config.ADMIN_ID)) return;
+    bot.hears("📢 Broadcast", async (ctx) => {
 
-ctx.reply(
+        if (String(ctx.from.id) !== String(config.ADMIN_ID)) return;
 
-"Send the message you want to broadcast."
+        waiting = true;
 
-);
+        await ctx.reply(
+            "📢 Send the message to broadcast to all users."
+        );
 
-});
+    });
+
+    bot.on("text", async (ctx, next) => {
+
+        if (!waiting) return next();
+
+        if (String(ctx.from.id) !== String(config.ADMIN_ID)) return;
+
+        waiting = false;
+
+        const users = await db.collection("users").get();
+
+        let sent = 0;
+
+        let failed = 0;
+
+        for (const user of users.docs) {
+
+            try {
+
+                await bot.telegram.sendMessage(
+                    user.id,
+                    ctx.message.text
+                );
+
+                sent++;
+
+            } catch {
+
+                failed++;
+
+            }
+
+        }
+
+        await ctx.reply(
+`✅ Broadcast Complete
+
+Sent: ${sent}
+
+Failed: ${failed}`
+        );
+
+    });
 
 }

@@ -1,29 +1,34 @@
 import { getUser } from "../database/users.js";
 
-export default async function(ctx){
+export default function profile(bot) {
 
-const user=await getUser(ctx.from.id);
+    bot.hears("👤 Profile", async (ctx) => {
 
-ctx.reply(
+        const user = await getUser(ctx.from.id);
+
+        if (!user) return;
+
+        await ctx.reply(
 
 `👤 Profile
 
-🆔 ${user.id}
+ID: ${user.id}
 
-👤 ${user.name}
+Name: ${user.firstName}
 
-📛 @${user.username}
+Username: @${user.username || "None"}
 
-💰 Balance : ₦${user.balance}
+Balance: ₦${user.balance}
 
-👥 Referrals : ${user.referrals}
+Referral Count: ${user.referralCount}
 
-📋 Surveys : ${user.completedSurveys}
+Completed Surveys: ${user.completedSurveys}
 
-📅 Joined
+Member Since:
+${user.createdAt?.toDate?.().toLocaleDateString() || "N/A"}`
 
-${new Date(user.joined).toLocaleDateString()}`
+        );
 
-);
+    });
 
 }

@@ -1,31 +1,57 @@
 import { Markup } from "telegraf";
-import { createSurveyLink } from "../services/cpx.js";
+import crypto from "crypto";
+import config from "../config.js";
+import { getUser } from "../database/users.js";
 
-export default function(bot){
+export default function surveys(bot) {
 
-bot.hears("📋 Surveys",async(ctx)=>{
+    bot.hears("📋 Surveys", async (ctx) => {
 
-const surveyLink=createSurveyLink(ctx.from);
+        try {
 
-await ctx.reply(
+            const user = await getUser(ctx.from.id);
 
-`📋 CPX Research
+            if (!user) {
+                return ctx.reply("Please send /start first.");
+            }
 
-Complete surveys and earn rewards.
+            const secureHash = crypto
+                .createHash("md5")
+                .update(`${ctx.from.id}-${config.CPX_SECURITY_HASH}`)
+                .digest("hex");
 
-Click the button below.`,
+            const surveyLink =
+`https://offers.cpx-research.com/index.php?app_id=${config.CPX_APP_ID}&ext_user_id=${ctx.from.id}&secure_hash=${secureHash}&username=${encodeURIComponent(user.username || "")}&email=${encodeURIComponent(user.email || "")}`;
 
-Markup.inlineKeyboard([
+            await ctx.reply(
 
-Markup.button.url(
-"🚀 Open Survey Wall",
-surveyLink
-)
+`📋 Available Surveys
 
-])
+💰 Complete surveys and earn money.
 
-);
+Your rewards are added automatically after CPX confirms the survey.
 
-});
+👇 Tap the button below.`,
+
+                Markup.inlineKeyboard([
+                    [
+                        Markup.button.url(
+                            "🚀 Start Surveys",
+                            surveyLink
+                        )
+                    ]
+                ])
+
+            );
+
+        } catch (err) {
+
+            console.error(err);
+
+            await ctx.reply("❌ Unable to load surveys.");
+
+        }
+
+    });
 
 }

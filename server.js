@@ -1,17 +1,23 @@
 import express from "express";
 import crypto from "crypto";
-
-import { doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { FieldValue } from "firebase-admin/firestore";
 import config from "./config.js";
+import { rewardReferral } from "./database/users.js";
 
 const app = express();
 
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
     res.send("TaskMint Survey Bot API Running");
+});
+
+app.get("/health", (req, res) => {
+    res.json({
+        status: "online"
+    });
 });
 
 app.get("/cpx/postback", async (req, res) => {
@@ -21,7 +27,9 @@ app.get("/cpx/postback", async (req, res) => {
         const {
             ext_user_id,
             amount_local,
+            amount_usd,
             trans_id,
+            status,
             hash
         } = req.query;
 
@@ -34,22 +42,71 @@ app.get("/cpx/postback", async (req, res) => {
             return res.status(403).send("Invalid Hash");
         }
 
-        await updateDoc(
-            doc(db, "users", String(ext_user_id)),
-            {
-                balance: increment(Number(amount_local)),
-                totalEarned: increment(Number(amount_local)),
-                completedSurveys: increment(1)
-            }
-        );
+        const trx = db.collection("transactions").doc(trans_id);
 
-        console.log(`Rewarded User ${ext_user_id} : ₦${amount_local}`);
+        const trxSnap = await trx.get();
+
+        if (trxSnap.exists && status !== "2") {
+            return res.send("OK");
+        }
+
+        const userRef = db.collection("users").doc(String(ext_user_id));
+
+        if (status === "2") {
+
+            await userRef.update({
+
+                balance: FieldValue.increment(-Number(amount_local)),
+
+                totalEarned: FieldValue.increment(-Number(amount_local))
+
+            });
+
+            await trx.set({
+
+                status: "reversed",
+
+                reversedAt: new Date()
+
+            }, { merge: true });
+
+            return res.send("OK");
+
+        }
+
+        await userRef.update({
+
+            balance: FieldValue.increment(Number(amount_local)),
+
+            totalEarned: FieldValue.increment(Number(amount_local)),
+
+            completedSurveys: FieldValue.increment(1)
+
+        });
+
+        await trx.set({
+
+            userId: String(ext_user_id),
+
+            type: "Survey",
+
+            amount: Number(amount_local),
+
+            usd: Number(amount_usd || 0),
+
+            status: "completed",
+
+            createdAt: new Date()
+
+        });
+
+        await rewardReferral(ext_user_id);
 
         res.send("OK");
 
     } catch (err) {
 
-        console.error(err);
+        console.log(err);
 
         res.status(500).send("ERROR");
 
@@ -60,5 +117,7 @@ app.get("/cpx/postback", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`CPX Postback Server Running on port ${PORT}`);
+
+    console.log(`✅ Server Running on ${PORT}`);
+
 });

@@ -1,66 +1,84 @@
+import { Markup } from "telegraf";
 import config from "../config.js";
 
 import {
-registerUser,
-updateLogin
+    registerUser,
+    updateLogin
 } from "../database/users.js";
 
-import { Markup } from "telegraf";
+export default async function (ctx) {
 
-export default async function(ctx){
+    try {
 
-const args=ctx.message.text.split(" ");
+        const args = ctx.message.text.split(" ");
 
-let referredBy="";
+        let referredBy = "";
 
-if(args.length>1){
+        if (args.length > 1) {
 
-referredBy=args[1];
+            referredBy = args[1];
 
-}
+        }
 
-await registerUser(ctx.from,referredBy);
+        await registerUser(ctx.from, referredBy);
 
-await updateLogin(ctx.from.id);
+        await updateLogin(ctx.from.id);
 
-const isAdmin=String(ctx.from.id)===String(config.ADMIN_ID);
+        const isAdmin =
+            String(ctx.from.id) === String(config.ADMIN_ID);
 
-const keyboard=isAdmin
+        const keyboard = isAdmin
 
-?Markup.keyboard([
+            ? Markup.keyboard([
+                ["📋 Surveys"],
+                ["💰 Wallet", "💸 Withdraw"],
+                ["👤 Profile", "👥 Invite Friends"],
+                ["🎁 Daily Bonus", "📜 History"],
+                ["📞 Support", "🔐 Admin"]
+            ]).resize()
 
-["📋 Surveys"],
+            : Markup.keyboard([
+                ["📋 Surveys"],
+                ["💰 Wallet", "💸 Withdraw"],
+                ["👤 Profile", "👥 Invite Friends"],
+                ["🎁 Daily Bonus", "📜 History"],
+                ["📞 Support"]
+            ]).resize();
 
-["💰 Wallet","💸 Withdraw"],
+        const username = ctx.from.username
+            ? `@${ctx.from.username}`
+            : ctx.from.first_name;
 
-["👤 Profile","👥 Invite Friends"],
+        await ctx.reply(
+`👋 Welcome ${username}!
 
-["📞 Support","🔐 Admin"]
+🎉 Welcome to *TaskMint Survey*.
 
-]).resize()
+💰 Complete surveys and earn money.
 
-:Markup.keyboard([
+✨ Features:
+• 📋 Paid Surveys
+• 🎁 Daily Bonus
+• 👥 Invite Friends
+• 💰 Instant Wallet Updates
+• 💸 Withdraw Your Earnings
+• 📜 Transaction History
 
-["📋 Surveys"],
+👇 Choose an option below to get started.`,
+            {
+                parse_mode: "Markdown",
+                ...keyboard
+            }
+        );
 
-["💰 Wallet","💸 Withdraw"],
+    } catch (err) {
 
-["👤 Profile","👥 Invite Friends"],
+        console.error(err);
 
-["📞 Support"]
+        await ctx.reply(
+            "❌ Failed to start the bot. Please try again."
+        );
 
-]).resize();
-
-await ctx.reply(
-
-`👋 Welcome @${ctx.from.username||ctx.from.first_name}
-
-💰 Earn money by completing surveys.
-
-👇 Choose an option below.`,
-
-keyboard
-
-);
+    }
 
 }
