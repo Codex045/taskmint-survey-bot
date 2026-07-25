@@ -12,7 +12,8 @@ package-lock.json
 
 .idea/
 
+serviceAccountKey.json
+
 logs/
 
 *.log
-serviceAccountKey.json
