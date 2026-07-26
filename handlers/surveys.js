@@ -1,7 +1,6 @@
-import { Markup } from "telegraf";
 import crypto from "crypto";
+import { Markup } from "telegraf";
 import config from "../config.js";
-import { getUser } from "../database/users.js";
 
 export default function surveys(bot) {
 
@@ -9,46 +8,46 @@ export default function surveys(bot) {
 
         try {
 
-            const user = await getUser(ctx.from.id);
-
-            if (!user) {
-                return ctx.reply("Please send /start first.");
-            }
+            const userId = String(ctx.from.id);
 
             const secureHash = crypto
                 .createHash("md5")
-                .update(`${ctx.from.id}-${config.CPX_SECURITY_HASH}`)
+                .update(`${userId}-${config.CPX_SECURITY_HASH}`)
                 .digest("hex");
 
-            const surveyLink =
-`https://offers.cpx-research.com/index.php?app_id=${config.CPX_APP_ID}&ext_user_id=${ctx.from.id}&secure_hash=${secureHash}&username=${encodeURIComponent(user.username || "")}&email=${encodeURIComponent(user.email || "")}`;
+            const surveyUrl =
+                `https://offers.cpx-research.com/index.php` +
+                `?app_id=${config.CPX_APP_ID}` +
+                `&external_user_id=${userId}` +
+                `&secure_hash=${secureHash}` +
+                `&subid_1=telegram` +
+                `&subid_2=taskmint`;
 
             await ctx.reply(
-
-`📋 Available Surveys
-
-💰 Complete surveys and earn money.
-
-Your rewards are added automatically after CPX confirms the survey.
-
-👇 Tap the button below.`,
-
-                Markup.inlineKeyboard([
-                    [
-                        Markup.button.url(
-                            "🚀 Start Surveys",
-                            surveyLink
-                        )
-                    ]
-                ])
-
+                `📋 *TaskMint Surveys*\n\n` +
+                `💰 Complete surveys and earn money.\n\n` +
+                `✅ Rewards are added automatically.\n\n` +
+                `👇 Tap the button below to start.`,
+                {
+                    parse_mode: "Markdown",
+                    ...Markup.inlineKeyboard([
+                        [
+                            Markup.button.url(
+                                "🚀 Start Surveys",
+                                surveyUrl
+                            )
+                        ]
+                    ])
+                }
             );
 
         } catch (err) {
 
             console.error(err);
 
-            await ctx.reply("❌ Unable to load surveys.");
+            await ctx.reply(
+                "❌ Unable to load surveys. Please try again later."
+            );
 
         }
 

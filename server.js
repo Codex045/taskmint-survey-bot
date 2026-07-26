@@ -15,9 +15,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-    res.json({
-        status: "online"
-    });
+    res.json({ status: "online" });
 });
 
 app.get("/cpx/postback", async (req, res) => {
@@ -30,7 +28,8 @@ app.get("/cpx/postback", async (req, res) => {
             amount_usd,
             trans_id,
             status,
-            hash
+            hash,
+            type
         } = req.query;
 
         const verify = crypto
@@ -46,9 +45,9 @@ app.get("/cpx/postback", async (req, res) => {
             .collection("transactions")
             .doc(String(trans_id));
 
-        const exists = await transactionRef.get();
+        const transaction = await transactionRef.get();
 
-        if (exists.exists && status !== "2") {
+        if (transaction.exists && status !== "2") {
             return res.send("OK");
         }
 
@@ -74,6 +73,26 @@ app.get("/cpx/postback", async (req, res) => {
 
             }, { merge: true });
 
+            try {
+
+                if (global.bot) {
+
+                    await global.bot.telegram.sendMessage(
+
+                        Number(ext_user_id),
+
+                        `⚠️ A survey reward of ₦${amount_local} has been reversed by CPX Research.`
+
+                    );
+
+                }
+
+            } catch (err) {
+
+                console.error("Telegram notification failed:", err);
+
+            }
+
             return res.send("OK");
 
         }
@@ -92,7 +111,9 @@ app.get("/cpx/postback", async (req, res) => {
 
             userId: String(ext_user_id),
 
-            type: "Survey",
+            transactionId: String(trans_id),
+
+            type: type || "complete",
 
             amount: Number(amount_local),
 
@@ -105,6 +126,26 @@ app.get("/cpx/postback", async (req, res) => {
         });
 
         await rewardReferral(ext_user_id);
+
+        try {
+
+            if (global.bot) {
+
+                await global.bot.telegram.sendMessage(
+
+                    Number(ext_user_id),
+
+                    `🎉 Survey Completed!\n\n💰 Reward: ₦${amount_local}\n\n✅ Your wallet has been updated successfully.\n\nTap 💰 Wallet to view your balance.`
+
+                );
+
+            }
+
+        } catch (err) {
+
+            console.error("Telegram notification failed:", err);
+
+        }
 
         console.log(
             `Survey Reward → User ${ext_user_id}: ₦${amount_local}`

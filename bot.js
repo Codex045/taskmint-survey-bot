@@ -18,6 +18,7 @@ import maintenance from "./handlers/maintenance.js";
 import stats from "./handlers/stats.js";
 
 const bot = new Telegraf(config.BOT_TOKEN);
+global.bot = bot;
 
 bot.start(start);
 
